@@ -430,7 +430,7 @@ function FeaturedLawyers() {
         </div>
         <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {featuredLawyers.map((l) => (
-            <LawyerCard key={l.id} lawyer={l} compact requestHref="/directorio" />
+            <LawyerCard key={l.id} lawyer={l} compact profileHref={`/directorio/${l.id}`} />
           ))}
         </div>
         <div className="mt-6 text-center sm:hidden">

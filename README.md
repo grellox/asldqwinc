@@ -61,7 +61,10 @@ Si cambias el nombre del repositorio, actualiza `base` en `vite.config.ts` para 
 | `/madre/asistente` | Asistente jurídico IA + simulador de conciliación |
 | `/madre/expediente` | Expediente digital |
 | `/madre/gastos` | Gastos y pensiones |
-| `/abogados` | Marketplace de abogados |
+| `/madre/abogados` | Marketplace de abogados (vista de la madre) |
+| `/madre/abogados/:id` | Perfil del abogado desde la vista de la madre |
+| `/directorio` | Marketplace público (`/abogados` redirige aquí) |
+| `/directorio/:id` | Perfil público del abogado (reseñas, hitos, trayectoria) |
 | `/abogado` | Centro de mando del abogado |
 | `/abogado/adquisicion` | Adquisición (leads + pizarra pública) |
 | `/abogado/validacion` | Validación IA |
@@ -73,4 +76,9 @@ Desde la barra lateral (o el menú inferior en móvil) puedes cambiar entre **P�
 
 - No hay claves de API ni llamadas a servicios externos (salvo Google Fonts).
 - El asistente IA, el CEJ, los pagos y el lector de PDF están simulados con datos y retardos predefinidos.
+- **Flujo de contratación**: la madre solicita asesoría desde el marketplace → el abogado envía un presupuesto (precio por hito, número de hitos, mensaje y vigencia) → la madre lo acepta o lo rechaza → al aceptar se crea el caso y el primer hito queda en custodia.
+  - Si la solicitud va a **Dra. Carmen Valdivia** (la abogada con la que se inicia sesión en el rol *abogado*), entra como lead en `/abogado/adquisicion` y el presupuesto se envía a mano desde ahí.
+  - Los demás abogados no tienen bandeja en la demo, así que su presupuesto llega solo, unos segundos después de la solicitud.
+  - El caso contratado aparece en «Mis solicitudes» de la madre y, si es de Carmen Valdivia, también en sus casos activos, hitos y custodia del centro de mando.
+- Si pulsas «Solicitar asesoría» sin sesión iniciada, la demo recuerda a qué abogado querías escribir y, tras ingresar como madre, vuelve a su perfil con el formulario abierto.
 - El progreso (documentos, chat, solicitudes, etc.) se guarda en `localStorage` del navegador, por lo que persiste entre recargas pero es local a cada dispositivo.

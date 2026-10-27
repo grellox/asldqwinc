@@ -27,6 +27,8 @@ const benefits: Record<'madre' | 'abogado', string[]> = {
 export function Login() {
   const navigate = useNavigate();
   const login = useAppStore((s) => s.login);
+  const pendingRequestLawyerId = useAppStore((s) => s.pendingRequestLawyerId);
+  const setPendingRequestLawyer = useAppStore((s) => s.setPendingRequestLawyer);
 
   const [selectedRole, setSelectedRole] = useState<'madre' | 'abogado'>('madre');
   const [mode, setMode] = useState<'ingresar' | 'crear'>('ingresar');
@@ -50,6 +52,15 @@ export function Login() {
     return '';
   }
 
+  /** A visitor who came from "Solicitar asesoría" resumes on that lawyer's profile. */
+  function routeAfterLogin() {
+    if (selectedRole !== 'madre') {
+      setPendingRequestLawyer(null);
+      return '/abogado';
+    }
+    return pendingRequestLawyerId ? `/madre/abogados/${pendingRequestLawyerId}` : '/madre/panel';
+  }
+
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     const validationError = validate();
@@ -60,7 +71,7 @@ export function Login() {
     setError('');
     const displayName = name.trim() || (selectedRole === 'madre' ? 'María Torres' : 'Dra. Carmen Valdivia');
     login(displayName, selectedRole as Role);
-    navigate(selectedRole === 'madre' ? '/madre/panel' : '/abogado');
+    navigate(routeAfterLogin());
   }
 
   function handleRoleChange(role: 'madre' | 'abogado') {
@@ -92,7 +103,7 @@ export function Login() {
       const displayName = selectedRole === 'madre' ? 'María Torres' : 'Dra. Carmen Valdivia';
       login(displayName, selectedRole as Role);
       setGoogleLoading(false);
-      navigate(selectedRole === 'madre' ? '/madre/panel' : '/abogado');
+      navigate(routeAfterLogin());
     }, 900);
   }
 

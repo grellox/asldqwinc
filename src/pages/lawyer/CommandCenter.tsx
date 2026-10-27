@@ -21,6 +21,8 @@ import {
   lawyerReputation,
   subscriptionPlans,
 } from '../../data/lawyerDesk';
+import { MY_LAWYER_ID } from '../../data/lawyers';
+import { useAppStore } from '../../store/useAppStore';
 import type { MilestoneStatus } from '../../types';
 
 const milestoneStyles: Record<MilestoneStatus, { label: string; className: string }> = {
@@ -35,8 +37,41 @@ export function CommandCenter() {
   const [range, setRange] = useState<'6m' | '2026'>('6m');
 
   const custody = range === '6m' ? custodyByMonth : custodyFullYear2026;
-  const inCustody = custodyByMonth[custodyByMonth.length - 1].value;
-  const upcoming = activeCases.filter((c) => c.nextHearing);
+
+  // A case contracted from the marketplace joins the desk alongside the seeded ones.
+  const engagement = useAppStore((s) => s.engagement);
+  const requests = useAppStore((s) => s.requests);
+  const mine = engagement?.lawyerId === MY_LAWYER_ID ? engagement : null;
+  const engagementRequest = mine ? (requests.find((r) => r.id === mine.requestId) ?? null) : null;
+
+  const cases =
+    mine && engagementRequest
+      ? [
+          {
+            id: mine.caseId,
+            clientName: engagementRequest.motherName,
+            stage: 'Encargo aceptado',
+            district: engagementRequest.district,
+          },
+          ...activeCases,
+        ]
+      : activeCases;
+
+  const milestones =
+    mine && engagementRequest
+      ? [
+          {
+            caseId: mine.caseId,
+            clientName: engagementRequest.motherName,
+            status: 'custodia' as const,
+            amount: mine.pricePerHito,
+          },
+          ...caseMilestones,
+        ]
+      : caseMilestones;
+
+  const inCustody = custodyByMonth[custodyByMonth.length - 1].value + (mine?.pricePerHito ?? 0);
+  const upcoming = cases.filter((c) => c.nextHearing);
 
   return (
     <div className="flex flex-col gap-6">
@@ -111,14 +146,14 @@ export function CommandCenter() {
 
         <Card className="flex flex-col items-start gap-2">
           <CardTitle>Casos activos</CardTitle>
-          <p className="font-serif text-5xl font-medium text-ink">{activeCasesCount}</p>
+          <p className="font-serif text-5xl font-medium text-ink">{activeCasesCount + (mine ? 1 : 0)}</p>
           <p className="text-sm text-[#475569]">Distribuidos en los 6 distritos de Arequipa.</p>
         </Card>
 
         <Card>
           <CardTitle>Clientas más activas</CardTitle>
           <ul className="mt-4 flex flex-col gap-2">
-            {activeCases.slice(0, 5).map((c) => (
+            {cases.slice(0, 5).map((c) => (
               <li key={c.id}>
                 <Link
                   to={`/abogado/clienta/${c.id}`}
@@ -161,7 +196,7 @@ export function CommandCenter() {
             Los documentos probatorios de cada hito quedan respaldados en la bóveda digital de Syloop.
           </p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {caseMilestones.map((m) => (
+            {milestones.map((m) => (
               <CardBlock key={m.caseId} className="flex items-center justify-between gap-3">
                 <span>
                   <span className="flex items-center gap-1.5 text-sm font-semibold text-ink">
