@@ -19,8 +19,8 @@ Esta es una **demo pública estática**: no hay backend, todos los datos son fic
 ## Correr en local
 
 ```bash
-npm install
-npm run dev
+pnpm install
+pnpm dev
 ```
 
 Abre `http://localhost:5173/syloop/`.
@@ -28,15 +28,15 @@ Abre `http://localhost:5173/syloop/`.
 ## Build de producción
 
 ```bash
-npm run build
-npm run preview
+pnpm build
+pnpm preview
 ```
 
 ## Publicar en GitHub Pages
 
 El repositorio incluye `.github/workflows/deploy.yml`, que en cada push a `main`:
 
-1. Instala dependencias y ejecuta `npm run build`.
+1. Instala dependencias con pnpm y ejecuta `pnpm build`.
 2. Sube `dist/` como artefacto de Pages.
 3. Publica el sitio con `actions/deploy-pages`.
 
