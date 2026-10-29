@@ -50,6 +50,24 @@ La URL final queda en `https://<usuario>.github.io/<repositorio>/`.
 
 Si cambias el nombre del repositorio, actualiza `base` en `vite.config.ts` para que coincida (`/<repositorio>/`).
 
+## Imágenes y vídeo
+
+Los archivos viven en `public/images/` y se enchufan desde `src/data/media.ts`. Cada ranura es independiente, así que un archivo suelto ya sirve. `asset()` resuelve la ruta contra la base del despliegue, de modo que funciona igual en local y en GitHub Pages.
+
+| Ranura en `media.ts` | Archivo | Dónde aparece |
+|---|---|---|
+| `heroPhoto` | `collage-madre.webp` | Fondo del hero, a sangre y espejado, bajo un degradado de tinta |
+| `cityPhoto` | `hero-arequipa.webp` | Lámina ancha que cierra la landing |
+| `loginPhoto` | `login-arequipa.webp` | Tras el panel oscuro de `/ingresar` |
+| `bandTexture` | `sillar-texture.webp` | Losa de sillar de la banda «¿Eres abogado colegiado?» |
+| — | `abogados/<id>.webp` | Retrato del abogado en tarjeta y perfil |
+
+El hero estira su foto a todo el ancho, así que conviene que `heroPhoto` tenga 1600 px de ancho o más; por debajo de eso se nota blanda en pantallas grandes.
+
+Los retratos son opcionales: el campo `photo` del abogado en `src/data/lawyers.ts` apunta al archivo, y quien no lo tenga cae en el mosaico de iniciales.
+
+La ranura `walkthroughVideo` sigue vacía. Si le pones un MP4, la sección «Así se ve por dentro» cambia el recorrido interactivo por un reproductor de vídeo.
+
 ## Pantallas
 
 | Ruta | Pantalla |

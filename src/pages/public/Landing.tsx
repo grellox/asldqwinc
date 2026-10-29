@@ -1,468 +1,668 @@
-import { FormEvent, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import {
-  ShieldCheck,
-  Coins,
-  RefreshCw,
-  MessageSquareText,
   ArrowRight,
   CheckCircle2,
-  FileText,
+  ChevronDown,
+  MapPin,
+  Quote,
+  Search,
   Sparkles,
-  Clock3,
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
-import { ThinBars } from '../../components/charts/ThinBars';
-import { GroupedBars } from '../../components/charts/GroupedBars';
 import { LawyerCard } from '../../components/cards/LawyerCard';
-import { ArequipaCollage } from '../../components/landing/ArequipaCollage';
-import { VolcanoSilhouette } from '../../components/ui/VolcanoSilhouette';
-import { Logo } from '../../components/ui/Logo';
-import { featuredLawyers } from '../../data/lawyers';
-import { progressBars } from '../../data/progress';
-import { pensionByMonth } from '../../data/pension';
-import { useAppStore } from '../../store/useAppStore';
+import { Walkthrough } from '../../components/landing/Walkthrough';
+import { media } from '../../data/media';
+import { districtCatalogue, featuredLawyers, lawyers, specialtyCatalogue } from '../../data/lawyers';
 
-const guarantees = [
-  { icon: ShieldCheck, title: 'Supervisión humana', text: 'Un abogado revisa cada documento y cada respuesta de la IA.' },
-  { icon: Coins, title: 'Pago por hitos', text: 'Pagas en partes según avanza tu caso, nunca todo por adelantado.' },
-  { icon: RefreshCw, title: 'Conectado al CEJ', text: 'Tu expediente se actualiza con el Poder Judicial automáticamente.' },
-  { icon: MessageSquareText, title: 'En lenguaje claro', text: 'Explicaciones sin tecnicismos, pensadas para que entiendas todo.' },
+/* Figures quoted on the page come from the directory itself, so copy and data never drift. */
+const priceFloor = Math.min(...lawyers.map((l) => l.pricePerHito));
+const priceCeiling = Math.max(...lawyers.map((l) => l.pricePerHito));
+const averageMonths = Math.round(
+  lawyers.reduce((sum, l) => sum + l.avgResolutionMonths, 0) / lawyers.length
+);
+
+/** The real sequence of a pensión de alimentos case, with the milestones that carry a payment. */
+const stages = [
+  {
+    month: 'Mes 0',
+    name: 'Demanda presentada',
+    text: 'Tu abogado la redacta con tus documentos y la presenta.',
+    milestone: 1,
+  },
+  {
+    month: 'Mes 1',
+    name: 'Notificación',
+    text: 'El juzgado avisa al demandado. Seguimos el CEJ por ti.',
+    milestone: null,
+  },
+  {
+    month: 'Mes 3',
+    name: 'Audiencia única',
+    text: 'Se intenta conciliar. Si no hay acuerdo, se actúan las pruebas.',
+    milestone: 2,
+  },
+  {
+    month: 'Mes 6',
+    name: 'Sentencia',
+    text: 'El juzgado fija el monto y desde cuándo se debe.',
+    milestone: 3,
+  },
+  {
+    month: `Mes ${averageMonths}`,
+    name: 'Ejecución',
+    text: 'Si no paga, se liquidan los atrasos y se pide descuento por planilla.',
+    milestone: 4,
+  },
 ];
 
-const stepsByAudience: Record<'madre' | 'abogado', { title: string; description: string; to: string }[]> = {
-  madre: [
-    { title: 'Cuenta tu caso', description: 'Respondes preguntas simples y la IA organiza tu expediente inicial.', to: '/ingresar' },
-    { title: 'Conecta con un abogado', description: 'Eliges un abogado verificado del CAA según tu zona y presupuesto.', to: '/directorio' },
-    { title: 'Sigue tu proceso', description: 'Tu expediente se sincroniza con el CEJ y ves cada avance al instante.', to: '/madre/ruta' },
-    { title: 'Resuelve con ayuda de la IA', description: 'El asistente te explica cada paso y prepara documentos, siempre revisados por tu abogado.', to: '/madre/asistente' },
-    { title: 'Cobra tu pensión', description: 'Verificas los pagos y preparas la liquidación si hay atrasos.', to: '/madre/gastos' },
-  ],
-  abogado: [
-    { title: 'Recibe clientas verificadas', description: 'Nuevas madres te contactan según tu especialidad y distrito.', to: '/abogado/adquisicion' },
-    { title: 'Revisa el caso con IA', description: 'La IA prepara un resumen y documentos base para que tú los valides.', to: '/abogado/validacion' },
-    { title: 'Atiende por hitos', description: 'Cobras en 4 pagos conforme avanza el caso, sin gestionar cobranzas.', to: '/abogado' },
-    { title: 'Valida cada entrega', description: 'Apruebas, corriges o rechazas lo que genera la IA antes de enviarlo.', to: '/abogado/validacion' },
-    { title: 'Compara tu desempeño', description: 'Ves tus tiempos frente al promedio de otros abogados de la plataforma.', to: '/abogado' },
-  ],
-};
-
-const supervisionLayers = [
-  { n: '01', title: 'Expediente', text: 'Cada documento se organiza y clasifica automáticamente, listo para revisión humana.' },
-  { n: '02', title: 'Asistente IA', text: 'Responde con estilos claros, pero marca lo que no puede resolver sola.' },
-  { n: '03', title: 'Revisión del abogado', text: 'Ningún texto generado por IA sale sin que tu abogado lo apruebe.' },
-  { n: '04', title: 'CEJ', text: 'La sincronización con el Poder Judicial evita que se te pase una fecha.' },
-  { n: '05', title: 'Pago por hitos', text: 'El dinero queda en custodia y se libera solo cuando se cumple cada etapa.' },
-  { n: '06', title: 'Control de pensiones', text: 'Cada depósito se verifica contra tu calendario de pagos, mes a mes.' },
+/* The title above already says the IA drafts and a lawyer signs, so these two add
+   what the title cannot: who approves, and what stays on the record. */
+const supervisionPoints = [
+  'Un abogado colegiado aprueba cada escrito antes de que salga.',
+  'Queda registrado quién revisó cada documento y cuándo.',
 ];
+
+const faqs = [
+  {
+    q: '¿Cuánto cuesta usar Syloop?',
+    a: 'Crear la cuenta y ver el directorio no cuesta nada. Pagas solo los honorarios del abogado que elijas, por hitos.',
+  },
+  {
+    q: '¿Cómo sé que el abogado es de verdad?',
+    a: 'En su perfil ves su número de colegiatura del CAA, los juzgados donde litiga y sus reseñas.',
+  },
+  {
+    q: '¿Puedo usar Syloop si mi proceso ya empezó?',
+    a: 'Sí. Subes lo que ya tienes, lo sincronizamos con el CEJ y sigues desde donde estés.',
+  },
+  {
+    q: '¿El demandado se entera de lo que escribo aquí?',
+    a: 'No. Lo que escribes aquí lo ven tú y tu abogado. Al juzgado solo llega lo que él presenta.',
+  },
+];
+
+/** One tap into the directory, already filtered — the plain-language way in. */
+const quickSearches = [
+  { label: 'Pensión de alimentos', specialty: 'Pensión de alimentos' },
+  { label: 'El padre no paga', specialty: 'Ejecución de sentencias' },
+  { label: 'Violencia familiar', specialty: 'Violencia familiar' },
+];
+
+const testimonials = [
+  { lawyerId: 'quispe', reviewId: 'rev-quispe-1' },
+  { lawyerId: 'chavez', reviewId: 'rev-chavez-1' },
+  { lawyerId: 'valdivia', reviewId: 'rev-valdivia-1' },
+].map(({ lawyerId, reviewId }) => {
+  const lawyer = lawyers.find((l) => l.id === lawyerId)!;
+  return { lawyer, review: lawyer.reviews.find((r) => r.id === reviewId)! };
+});
 
 export function Landing() {
   return (
     <>
       <Hero />
-      <GuaranteeStrip />
-      <HowItWorks />
-      <MadeForArequipa />
-      <OpenBoard />
+      <Ruta />
+      <PorDentro />
       <Supervision />
-      <FeaturedLawyers />
+      <Abogados />
+      <Testimonios />
+      <LawyerBand />
+      <Faq />
       <FinalCta />
     </>
   );
 }
 
-function Hero() {
+/* ---------------------------------------------------------------- shell */
+
+/** Every section shares this shell, which is what keeps the page in one key. */
+function Section({
+  id,
+  eyebrow,
+  title,
+  tone = 'white',
+  children,
+}: {
+  id?: string;
+  /** Left out when the title already names the section, so nothing is said twice. */
+  eyebrow?: string;
+  title: ReactNode;
+  tone?: 'white' | 'canvas';
+  children: ReactNode;
+}) {
   return (
-    <section className="relative overflow-hidden">
-      <div
-        className="absolute inset-0 -z-10"
-        style={{
-          background: 'radial-gradient(60% 50% at 50% 0%, #DCE9FD 0%, #EEF4FE 45%, #FFFFFF 80%)',
-        }}
-      />
-      <div
-        className="absolute inset-0 -z-10 opacity-60"
-        style={{
-          backgroundImage: 'radial-gradient(#BFD7FB 1px, transparent 1px)',
-          backgroundSize: '24px 24px',
-          maskImage: 'radial-gradient(60% 60% at 50% 30%, black 40%, transparent 100%)',
-        }}
-      />
-      <div className="absolute inset-x-0 bottom-0 -z-10 h-28 opacity-70">
-        <VolcanoSilhouette variant="light" />
-      </div>
-
-      <div className="relative mx-auto max-w-5xl px-4 pb-20 pt-16 text-center sm:px-6 sm:pt-24">
-        <span className="inline-flex items-center rounded-full border border-tint-border bg-white/80 px-3.5 py-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-link">
-          IA con supervisión humana · Arequipa
-        </span>
-
-        <h1 className="mt-6 font-serif text-4xl font-medium leading-[1.1] text-ink sm:text-5xl">
-          Devolvemos el tiempo <span className="text-link">a la justicia</span>
-        </h1>
-
-        <p className="mx-auto mt-5 max-w-2xl text-[17px] text-[#475569]">
-          Syloop organiza tu expediente, te conecta con un abogado verificado del Colegio de Abogados de Arequipa y
-          usa inteligencia artificial —siempre revisada por personas— para explicarte cada paso de tu proceso de
-          alimentos, sin tecnicismos y sin perder tiempo.
-        </p>
-
-        <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <Link to="/ingresar">
-            <Button variant="primary">Comenzar mi caso gratis</Button>
-          </Link>
-          <Link to="/directorio">
-            <Button variant="secondary">Explorar abogados</Button>
-          </Link>
-        </div>
-        <p className="mt-4 text-sm text-[#475569]">Gratis para empezar · Abogados verificados por el CAA</p>
-
-        <div className="relative mx-auto mt-14 hidden max-w-3xl xl:block">
-          <FloatingCard className="-left-20 top-6 rotate-[-4deg]">
-            <span className="flex items-center gap-2 text-sm font-semibold text-ink">
-              <FileText className="h-4 w-4 text-brand" /> Demanda admitida
-            </span>
-            <span className="text-xs text-[#475569]">3° JPL de Arequipa</span>
-          </FloatingCard>
-          <FloatingCard className="-right-24 top-0 rotate-[3deg]">
-            <span className="flex items-center gap-2 text-sm font-semibold text-ink">
-              <Sparkles className="h-4 w-4 text-brand" /> Asistente Syloop
-            </span>
-            <span className="text-xs text-[#475569]">“Tu audiencia es el 10 de noviembre.”</span>
-          </FloatingCard>
-          <FloatingCard className="-left-16 bottom-0 rotate-[2deg]">
-            <span className="text-sm font-semibold text-ink">S/ 225 en custodia</span>
-            <span className="text-xs text-[#475569]">hito 2 de 4</span>
-            <span className="mt-1.5 flex gap-1">
-              {[1, 2, 3, 4].map((i) => (
-                <span key={i} className={`h-1.5 w-7 rounded-full ${i <= 2 ? 'bg-brand' : 'bg-[#E2E8F0]'}`} />
-              ))}
-            </span>
-          </FloatingCard>
-          <FloatingCard className="-right-20 bottom-4 rotate-[-2deg]">
-            <span className="flex items-center gap-2 text-sm font-semibold text-ink">
-              <CheckCircle2 className="h-4 w-4 text-brand" /> Dra. Valdivia revisó tu resumen
-            </span>
-          </FloatingCard>
-
-          <ProductPreview />
-        </div>
-
-        <div className="mx-auto mt-10 max-w-3xl xl:hidden">
-          <ProductPreview />
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function FloatingCard({ className, children }: { className: string; children: React.ReactNode }) {
-  return (
-    <div className={`absolute z-10 flex w-44 flex-col gap-0.5 rounded-card bg-white p-3.5 text-left shadow-xl ${className}`}>
-      {children}
-    </div>
-  );
-}
-
-function ProductPreview() {
-  return (
-    <div className="relative z-0 overflow-hidden rounded-2xl border-4 border-ink bg-ink shadow-2xl">
-      <div className="flex items-center gap-1.5 bg-ink px-3 py-2">
-        <span className="h-2.5 w-2.5 rounded-full bg-[#475569]" />
-        <span className="h-2.5 w-2.5 rounded-full bg-[#475569]" />
-        <span className="h-2.5 w-2.5 rounded-full bg-[#475569]" />
-      </div>
-      <div className="flex bg-canvas">
-        <div className="hidden w-16 flex-col items-center gap-3 bg-ink py-4 sm:flex">
-          <Logo showWordmark={false} variant="light" />
-        </div>
-        <div className="flex-1 p-4 text-left">
-          <p className="font-serif text-sm font-medium text-ink">Hola, María. Vamos paso a paso</p>
-          <Card className="mt-3 !p-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.1em] text-link">Avance del proceso</p>
-            <p className="font-serif text-2xl font-medium text-ink">42%</p>
-            <ThinBars data={progressBars.slice(-40)} height={48} />
-          </Card>
-          <div className="mt-3 grid grid-cols-2 gap-3">
-            <Card className="!p-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-link">Pensión</p>
-              <p className="mt-1 text-xs text-[#475569]">por mes</p>
-              <GroupedBars
-                categories={pensionByMonth.slice(0, 3).map((m) => m.month)}
-                series={[{ label: 'Pagado', color: '#4A8CF0' }]}
-                values={[pensionByMonth.slice(0, 3).map((m) => m.paid)]}
-                height={48}
-              />
-            </Card>
-            <Card className="!p-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-link">¿Qué sigue?</p>
-              <p className="mt-1 text-xs text-[#475569]">Subir constancia de ingresos</p>
-              <span className="mt-2 inline-block rounded-[8px] bg-ink px-2 py-1 text-[11px] font-semibold text-white">
-                Subir
-              </span>
-            </Card>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function GuaranteeStrip() {
-  return (
-    <section className="border-y border-[#E2E8F0] bg-white">
-      <div className="mx-auto grid max-w-6xl grid-cols-2 gap-6 px-4 py-10 sm:px-6 md:grid-cols-4">
-        {guarantees.map((g) => (
-          <div key={g.title} className="flex flex-col items-center gap-2 text-center">
-            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-tint text-brand-ink">
-              <g.icon className="h-5 w-5" />
-            </span>
-            <p className="text-sm font-bold text-ink">{g.title}</p>
-            <p className="text-xs text-[#475569]">{g.text}</p>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function HowItWorks() {
-  const [audience, setAudience] = useState<'madre' | 'abogado'>('madre');
-  const [activeStep, setActiveStep] = useState(0);
-  const steps = stepsByAudience[audience];
-
-  return (
-    <section id="como-funciona" className="bg-white px-4 py-20 sm:px-6">
-      <div className="mx-auto max-w-5xl text-center">
-        <h2 className="font-serif text-3xl font-medium text-ink sm:text-4xl">
-          Una sola plataforma para <span className="text-link">todo tu proceso de alimentos</span>
+    <section id={id} className={`py-24 ${tone === 'canvas' ? 'bg-canvas' : 'bg-white'}`}>
+      <div className="page-shell">
+        {eyebrow && <p className="eyebrow">{eyebrow}</p>}
+        <h2
+          className={`max-w-3xl text-balance font-serif text-[34px] font-medium leading-[1.1] text-ink sm:text-[42px] ${
+            eyebrow ? 'mt-3' : ''
+          }`}
+        >
+          {title}
         </h2>
-
-        <div className="mx-auto mt-6 inline-flex rounded-full bg-[#F1F5F9] p-1" role="tablist">
-          <button
-            role="tab"
-            aria-selected={audience === 'madre'}
-            onClick={() => {
-              setAudience('madre');
-              setActiveStep(0);
-            }}
-            className={`rounded-full px-4 py-2 text-sm font-semibold ${audience === 'madre' ? 'bg-white text-ink shadow-sm' : 'text-[#475569]'}`}
-          >
-            Para madres
-          </button>
-          <button
-            role="tab"
-            aria-selected={audience === 'abogado'}
-            onClick={() => {
-              setAudience('abogado');
-              setActiveStep(0);
-            }}
-            className={`rounded-full px-4 py-2 text-sm font-semibold ${audience === 'abogado' ? 'bg-white text-ink shadow-sm' : 'text-[#475569]'}`}
-          >
-            Para abogados
-          </button>
-        </div>
-
-        <div className="mt-10 flex flex-wrap items-stretch justify-center gap-2">
-          {steps.map((step, i) => (
-            <button
-              key={step.title}
-              onClick={() => setActiveStep(i)}
-              className={`relative flex min-h-[44px] items-center gap-2 rounded-[10px] px-4 py-2 text-sm font-semibold transition-colors ${
-                activeStep === i ? 'bg-ink text-white' : 'bg-[#F1F5F9] text-[#475569] hover:bg-[#E2E8F0]'
-              }`}
-            >
-              <span className={`flex h-5 w-5 items-center justify-center rounded-full text-xs ${activeStep === i ? 'bg-white/20' : 'bg-white'}`}>
-                {i + 1}
-              </span>
-              {step.title}
-              {i < steps.length - 1 && <ArrowRight className="ml-1 hidden h-3.5 w-3.5 opacity-40 sm:block" />}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="mx-auto mt-10 max-w-3xl overflow-hidden rounded-card bg-ink">
-        <div className="px-6 py-3 text-center text-xs font-semibold uppercase tracking-[0.1em] text-[#94A3B8]">
-          Plataforma Syloop · IA + supervisión humana obligatoria
-        </div>
-        <div className="border-t border-sidebar-hover bg-canvas p-6 sm:p-8">
-          <p className="text-xs font-semibold uppercase tracking-[0.1em] text-link">Paso {activeStep + 1}</p>
-          <h3 className="mt-1 font-serif text-2xl font-medium text-ink">{steps[activeStep].title}</h3>
-          <p className="mt-2 text-[#475569]">{steps[activeStep].description}</p>
-          <Link to={steps[activeStep].to} className="mt-5 inline-block">
-            <Button variant="primary">Ver pantalla relacionada</Button>
-          </Link>
-        </div>
+        <div className="mt-12">{children}</div>
       </div>
     </section>
   );
 }
 
-function MadeForArequipa() {
+/**
+ * A photograph, framed on the page grid and captioned. It is the page's one
+ * visual device: photos never sit behind type, they sit beside it and say
+ * what they are — the same plain-language promise the product makes.
+ */
+function Plate({
+  src,
+  alt,
+  caption,
+  imgClassName,
+  className = '',
+  priority = false,
+}: {
+  src: string;
+  alt: string;
+  caption: ReactNode;
+  imgClassName: string;
+  className?: string;
+  priority?: boolean;
+}) {
   return (
-    <section className="bg-canvas px-4 py-20 sm:px-6">
-      <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-2 lg:items-center">
-        <ArequipaCollage />
-
-        <div>
-          <h2 className="font-serif text-3xl font-medium text-ink sm:text-4xl">
-            Del juzgado <span className="text-link">a tu celular</span>
-          </h2>
-          <ul className="mt-6 flex flex-col gap-3 text-[#475569]">
-            <li className="flex gap-3">
-              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-brand" />
-              Pensado para los juzgados de paz letrado de Arequipa, no para un modelo genérico.
-            </li>
-            <li className="flex gap-3">
-              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-brand" />
-              Trabaja con abogados verificados por el Colegio de Abogados de Arequipa.
-            </li>
-            <li className="flex gap-3">
-              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-brand" />
-              Disponible en español y quechua, con abogados que atienden en ambos idiomas.
-            </li>
-          </ul>
-          <Link to="/ingresar" className="mt-6 inline-block">
-            <Button variant="primary">Comenzar mi caso</Button>
-          </Link>
-        </div>
-      </div>
-    </section>
+    <figure className={className}>
+      <img
+        src={src}
+        alt={alt}
+        fetchPriority={priority ? 'high' : 'auto'}
+        loading={priority ? 'eager' : 'lazy'}
+        decoding="async"
+        className={`rounded-card bg-canvas ${imgClassName}`}
+      />
+      <figcaption className="plate-caption">{caption}</figcaption>
+    </figure>
   );
 }
 
-function OpenBoard() {
-  const boardQuestions = useAppStore((s) => s.boardQuestions);
-  const addBoardQuestion = useAppStore((s) => s.addBoardQuestion);
-  const [draft, setDraft] = useState('');
-  const [sent, setSent] = useState(false);
+function useInView<T extends HTMLElement>(threshold = 0.3) {
+  const ref = useRef<T>(null);
+  const [inView, setInView] = useState(false);
 
-  function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    if (!draft.trim()) return;
-    addBoardQuestion(draft.trim());
-    setDraft('');
-    setSent(true);
-    setTimeout(() => setSent(false), 2500);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setInView(true);
+          observer.disconnect();
+        }
+      },
+      { threshold }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [threshold]);
+
+  return { ref, inView };
+}
+
+/* ----------------------------------------------------------------- hero */
+
+/**
+ * The photograph is the hero: it runs full bleed from the very top of the page,
+ * behind the bar, which turns transparent over it. The frame is mirrored so the
+ * dark half falls under the headline and the window light, the phone and the
+ * children's drawings stay open on the right.
+ */
+function Hero() {
+  const navigate = useNavigate();
+  const [specialty, setSpecialty] = useState('all');
+  const [district, setDistrict] = useState('all');
+
+  function goToDirectory(nextSpecialty: string, nextDistrict: string) {
+    const params = new URLSearchParams();
+    if (nextSpecialty !== 'all') params.set('especialidad', nextSpecialty);
+    if (nextDistrict !== 'all') params.set('distrito', nextDistrict);
+    const query = params.toString();
+    navigate(query ? `/directorio?${query}` : '/directorio');
   }
 
   return (
-    <section id="pizarra" className="bg-white px-4 py-20 sm:px-6">
-      <div className="mx-auto max-w-4xl">
-        <div className="text-center">
-          <h2 className="font-serif text-3xl font-medium text-ink sm:text-4xl">Pizarra de consultas abiertas</h2>
-          <p className="mt-2 text-[#475569]">
-            Publica una pregunta anónima sobre pensión de alimentos y abogados verificados pueden responderte.
+    <section className="relative -mt-16 flex min-h-[600px] items-center overflow-hidden bg-ink pt-16 lg:min-h-[640px]">
+      <img
+        src={media.heroPhoto}
+        alt=""
+        fetchPriority="high"
+        decoding="async"
+        className="absolute inset-0 h-full w-full -scale-x-100 object-cover object-[center_66%]"
+      />
+      {/* Up the page on a phone, across it on a wide screen: either way the type
+          sits on solid colour and the open side of the frame stays visible. */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 bg-gradient-to-t from-ink via-ink/85 to-ink/45 sm:hidden"
+      />
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 hidden sm:block"
+        style={{
+          background:
+            'linear-gradient(101deg, rgba(15,23,42,0.96) 0%, rgba(15,23,42,0.90) 34%, rgba(15,23,42,0.62) 60%, rgba(15,23,42,0.28) 100%)',
+        }}
+      />
+
+      <div className="page-shell relative py-20 lg:py-24">
+        <div className="max-w-2xl">
+          <h1 className="text-balance font-serif text-[42px] font-medium leading-[1.04] tracking-[-0.02em] text-white sm:text-[54px]">
+            Encuentra a tu abogado de <span className="text-sky">alimentos</span> en Arequipa
+          </h1>
+          <p className="mt-6 max-w-lg text-pretty text-[17px] leading-relaxed text-[#CBD5E1]">
+            Comparar es gratis. Pagas solo cuando aceptas un presupuesto.
           </p>
-        </div>
 
-        <form onSubmit={handleSubmit} className="mx-auto mt-8 flex max-w-xl flex-col gap-3 sm:flex-row">
-          <input
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            placeholder="Escribe tu pregunta de forma anónima…"
-            className="min-h-[44px] flex-1 rounded-[10px] border border-[#E2E8F0] px-3.5 text-[15px] focus-visible:focus-ring"
-          />
-          <Button type="submit" variant="primary">
-            Publicar
-          </Button>
-        </form>
-        {sent && <p className="mt-2 text-center text-sm font-medium text-brand-ink">Tu pregunta fue publicada.</p>}
+          <div className="mt-9 overflow-hidden rounded-[14px] bg-white shadow-[0_20px_50px_rgba(2,6,23,0.45)]">
+            <div className="grid sm:grid-cols-2">
+              <SearchField icon={Search} label="¿Qué necesitas?" value={specialty} onChange={setSpecialty}>
+                <option value="all">Todas las especialidades</option>
+                {specialtyCatalogue.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </SearchField>
 
-        <div className="mt-10 flex flex-col gap-4">
-          {boardQuestions.map((q) => (
-            <Card key={q.id} className="text-left">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.1em] text-link">{q.anonName}</p>
-                <span className="text-xs text-[#475569]">{q.date}</span>
-              </div>
-              <p className="mt-2 font-medium text-ink">{q.question}</p>
-              {q.answer ? (
-                <div className="mt-3 rounded-block bg-tint-soft p-4">
-                  <p className="text-sm text-[#334155]">{q.answer}</p>
-                  <p className="mt-2 text-xs font-semibold text-brand-ink">— {q.lawyerName}, abogado(a) verificado(a)</p>
-                </div>
-              ) : (
-                <p className="mt-3 text-sm italic text-[#475569]">Esperando respuesta…</p>
-              )}
-            </Card>
-          ))}
+              <SearchField
+                icon={MapPin}
+                label="¿Dónde vives?"
+                value={district}
+                onChange={setDistrict}
+                className="border-t border-[#E2E8F0] sm:border-l sm:border-t-0"
+              >
+                <option value="all">Todos los distritos</option>
+                {districtCatalogue.map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
+              </SearchField>
+            </div>
+
+            <div className="border-t border-[#E2E8F0] p-2">
+              <Button
+                variant="primary"
+                className="w-full"
+                onClick={() => goToDirectory(specialty, district)}
+              >
+                Buscar abogados
+              </Button>
+            </div>
+          </div>
+
+          <div className="mt-5 flex flex-wrap items-center gap-2">
+            <span className="text-[13px] text-white/65">En palabras simples</span>
+            {quickSearches.map((q) => (
+              <button
+                key={q.label}
+                type="button"
+                onClick={() => goToDirectory(q.specialty, 'all')}
+                className="rounded-full border border-white/30 px-3.5 py-1.5 text-sm font-medium text-white transition-colors hover:border-white/60 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-ink"
+              >
+                {q.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </section>
   );
 }
+
+/** One field of the search block: a label, a native select, and nothing else. */
+function SearchField({
+  icon: Icon,
+  label,
+  value,
+  onChange,
+  className = '',
+  children,
+}: {
+  icon: typeof Search;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <label
+      className={`flex cursor-pointer items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-[#F8FAFC] focus-within:bg-[#F8FAFC] ${className}`}
+    >
+      <Icon className="h-5 w-5 shrink-0 text-brand" />
+      <span className="min-w-0 flex-1">
+        <span className="eyebrow block">{label}</span>
+        <span className="relative mt-0.5 flex items-center">
+          <select
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            className="w-full cursor-pointer appearance-none truncate bg-transparent pr-6 text-[15px] font-medium text-ink focus:outline-none"
+          >
+            {children}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-0 h-4 w-4 text-[#475569]" />
+        </span>
+      </span>
+    </label>
+  );
+}
+
+/* -------------------------------------------------------- signature: ruta */
+
+function Ruta() {
+  const { ref, inView } = useInView<HTMLDivElement>(0.25);
+
+  return (
+    <Section
+      id="como-funciona"
+      tone="canvas"
+      eyebrow="La ruta de tu caso"
+      title={`Unos ${averageMonths} meses, cinco etapas`}
+    >
+      <div ref={ref}>
+        {/* Horizontal rail */}
+        <div className="hidden lg:block">
+          <div className="grid grid-cols-5 gap-6">
+            {stages.map((s) => (
+              <p key={s.month} className="eyebrow">
+                {s.month}
+              </p>
+            ))}
+          </div>
+
+          <div className="relative mt-4 h-4">
+            <span
+              className={`absolute left-[9%] right-[9%] top-1/2 h-[2px] -translate-y-1/2 rounded-full bg-gradient-to-r from-tint-border via-brand to-tint-border ${
+                inView ? 'origin-left animate-rail-draw' : ''
+              }`}
+            />
+            <div className="relative grid h-full grid-cols-5 gap-6">
+              {stages.map((s, i) => (
+                <span key={s.name} className="flex items-center justify-center">
+                  <span
+                    className={`h-4 w-4 rounded-full bg-brand ring-4 ring-canvas ${
+                      inView ? 'animate-node-in' : ''
+                    }`}
+                    style={inView ? { animationDelay: `${350 + i * 140}ms` } : undefined}
+                  />
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-6 grid grid-cols-5 gap-6">
+            {stages.map((s) => (
+              <div key={s.name}>
+                <h3 className="font-sans text-[15px] font-bold leading-snug text-ink">{s.name}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-[#475569]">{s.text}</p>
+                <MilestoneChip milestone={s.milestone} />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Vertical rail */}
+        <ol className="flex flex-col lg:hidden">
+          {stages.map((s, i) => (
+            <li key={s.name} className="relative flex gap-4 pb-8 last:pb-0">
+              {i < stages.length - 1 && (
+                <span className="absolute left-[7px] top-5 h-full w-[2px] rounded-full bg-tint-border" />
+              )}
+              <span className="relative mt-1.5 h-4 w-4 shrink-0 rounded-full bg-brand ring-4 ring-canvas" />
+              <div>
+                <p className="eyebrow">{s.month}</p>
+                <h3 className="mt-1 font-sans text-[15px] font-bold text-ink">{s.name}</h3>
+                <p className="mt-1.5 text-sm leading-relaxed text-[#475569]">{s.text}</p>
+                <MilestoneChip milestone={s.milestone} />
+              </div>
+            </li>
+          ))}
+        </ol>
+      </div>
+
+      <p className="mt-10 max-w-xl text-sm leading-relaxed text-[#475569]">
+        Los cuatro hitos cuestan entre S/ {priceFloor} y S/ {priceCeiling} cada uno y se liberan al
+        cumplirse la etapa.
+      </p>
+    </Section>
+  );
+}
+
+function MilestoneChip({ milestone }: { milestone: number | null }) {
+  if (milestone === null) {
+    return <p className="mt-3 text-xs text-[#94A3B8]">Sin pago en esta etapa</p>;
+  }
+  return (
+    <span className="mt-3 inline-flex items-center rounded-full bg-tint px-2.5 py-1 text-xs font-semibold text-brand-ink">
+      Hito {milestone}
+    </span>
+  );
+}
+
+/* ------------------------------------------------------------ por dentro */
+
+function PorDentro() {
+  return (
+    <Section eyebrow="La aplicación" title="Así se ve por dentro">
+      <Walkthrough />
+    </Section>
+  );
+}
+
+/* ---------------------------------------------------------- supervision */
 
 function Supervision() {
   return (
-    <section className="bg-ink px-4 py-20 sm:px-6">
-      <div className="mx-auto max-w-5xl">
-        <h2 className="text-center font-serif text-3xl font-medium text-white sm:text-4xl">
-          Supervisión humana en cada capa
-        </h2>
-        <div className="mt-12 grid gap-8 sm:grid-cols-2">
-          {supervisionLayers.map((l) => (
-            <div key={l.n} className="flex gap-4">
-              <span className="font-serif text-2xl font-medium text-sky">{l.n}</span>
-              <div>
-                <p className="font-sans text-[15px] font-bold text-white">{l.title}</p>
-                <p className="mt-1 text-sm text-[#94A3B8]">{l.text}</p>
-              </div>
-            </div>
+    <Section tone="canvas" eyebrow="Supervisión humana" title="La IA redacta. Un abogado firma.">
+      <div className="grid gap-10 lg:grid-cols-[1fr_420px] lg:items-center">
+        <ul className="flex flex-col gap-5">
+          {supervisionPoints.map((point) => (
+            <li key={point} className="flex items-start gap-3">
+              <CheckCircle2 className="mt-1 h-5 w-5 shrink-0 text-brand" />
+              <span className="font-sans text-[19px] font-bold leading-snug text-ink">{point}</span>
+            </li>
           ))}
+        </ul>
+
+        <ValidationMock />
+      </div>
+    </Section>
+  );
+}
+
+/** The validation screen, which is where the claim above is actually enforced. */
+function ValidationMock() {
+  return (
+    <div className="rounded-card bg-white p-5 ring-1 ring-[#E2E8F0]">
+      <p className="eyebrow flex items-center gap-2">
+        <Sparkles className="h-3.5 w-3.5" /> Borrador de la IA
+      </p>
+      <p className="mt-3 text-sm leading-relaxed text-[#334155]">
+        «Se propone una pensión mensual de S/ 620 para los dos hijos, calculada como el 40 % del ingreso
+        declarado del demandado.»
+      </p>
+
+      <div className="mt-4 rounded-block bg-warn-panel p-3">
+        <p className="text-xs font-semibold text-warn-text">Marcado para revisión</p>
+        <p className="mt-1 text-xs text-[#92400E]">Confirmar el ingreso declarado antes de enviar.</p>
+      </div>
+
+      <div className="mt-4 flex items-center gap-2" aria-hidden="true">
+        <span className="rounded-[10px] bg-ink px-3.5 py-2 text-sm font-semibold text-white">Aprobar</span>
+        <span className="rounded-[10px] border border-[#E2E8F0] bg-white px-3.5 py-2 text-sm font-semibold text-ink">
+          Corregir
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------- abogados */
+
+function Abogados() {
+  return (
+    <Section id="abogados-destacados" eyebrow="El directorio" title="Quién puede tomar tu caso">
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {featuredLawyers.map((l) => (
+          <LawyerCard key={l.id} lawyer={l} compact profileHref={`/directorio/${l.id}`} />
+        ))}
+      </div>
+
+      <Link
+        to="/directorio"
+        className="mt-8 inline-flex items-center gap-1.5 text-sm font-semibold text-link hover:underline focus-visible:focus-ring"
+      >
+        Ver los {lawyers.length} abogados <ArrowRight className="h-4 w-4" />
+      </Link>
+    </Section>
+  );
+}
+
+/* ---------------------------------------------------------- testimonios */
+
+function Testimonios() {
+  return (
+    <Section tone="canvas" eyebrow="Reseñas" title="Lo dicen las clientas">
+      <div className="grid gap-6 lg:grid-cols-3">
+        {testimonials.map(({ lawyer, review }) => (
+          <Card key={review.id} className="flex flex-col gap-4 ring-1 ring-[#E2E8F0]">
+            <Quote className="h-6 w-6 text-brand" />
+            <p className="flex-1 text-[15px] leading-relaxed text-[#334155]">«{review.text}»</p>
+            <div className="border-t border-[#E2E8F0] pt-4">
+              <p className="font-sans text-sm font-bold text-ink">{review.authorName}</p>
+              <p className="text-xs text-[#475569]">
+                {review.caseType} · con{' '}
+                <Link to={`/directorio/${lawyer.id}`} className="text-link hover:underline">
+                  {lawyer.name}
+                </Link>
+              </p>
+            </div>
+          </Card>
+        ))}
+      </div>
+    </Section>
+  );
+}
+
+/* ------------------------------------------------------------ lawyer band */
+
+/**
+ * The one textured surface on the page: a slab of sillar, the volcanic stone
+ * Arequipa and its courthouses are built from. It marks the only moment the
+ * page stops talking to mothers and talks to lawyers.
+ */
+function LawyerBand() {
+  return (
+    <section className="bg-canvas pb-24">
+      <div className="page-shell">
+        <div className="relative flex flex-col gap-4 overflow-hidden rounded-card px-6 py-10 ring-1 ring-black/10 sm:flex-row sm:items-center sm:justify-between sm:px-8">
+          <img
+            src={media.bandTexture}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            className="pointer-events-none absolute inset-0 h-full w-full object-cover object-[center_66%]"
+          />
+          <span className="pointer-events-none absolute inset-0 bg-gradient-to-r from-white/70 via-white/40 to-white/20" aria-hidden="true" />
+
+          <div className="relative">
+            <p className="font-sans text-[17px] font-bold text-ink">¿Eres abogado colegiado?</p>
+            <p className="mt-1 text-sm text-[#334155]">Recibe casos ordenados y cobra por hitos.</p>
+          </div>
+          <Link to="/abogado" className="relative shrink-0">
+            <Button variant="primary">Ver el panel del abogado</Button>
+          </Link>
         </div>
       </div>
     </section>
   );
 }
 
-function FeaturedLawyers() {
+/* ------------------------------------------------------------------ faq */
+
+function Faq() {
+  const [open, setOpen] = useState<number | null>(0);
+
   return (
-    <section id="abogados-destacados" className="bg-canvas px-4 py-20 sm:px-6">
-      <div className="mx-auto max-w-6xl">
-        <div className="flex items-end justify-between gap-4">
-          <h2 className="font-serif text-3xl font-medium text-ink sm:text-4xl">Abogados destacados</h2>
-          <Link to="/directorio" className="hidden text-sm font-semibold text-link hover:underline sm:block">
-            Ver marketplace completo
-          </Link>
-        </div>
-        <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {featuredLawyers.map((l) => (
-            <LawyerCard key={l.id} lawyer={l} compact profileHref={`/directorio/${l.id}`} />
-          ))}
-        </div>
-        <div className="mt-6 text-center sm:hidden">
-          <Link to="/directorio" className="text-sm font-semibold text-link hover:underline">
-            Ver marketplace completo
-          </Link>
-        </div>
+    <Section title="Preguntas frecuentes">
+      <div className="flex max-w-3xl flex-col gap-2">
+        {faqs.map((f, i) => (
+          <div key={f.q} className="overflow-hidden rounded-card bg-white ring-1 ring-[#E2E8F0]">
+            <button
+              type="button"
+              onClick={() => setOpen(open === i ? null : i)}
+              aria-expanded={open === i}
+              className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left focus-visible:focus-ring"
+            >
+              <span className="font-sans text-[15px] font-bold text-ink">{f.q}</span>
+              <ChevronDown
+                className={`h-5 w-5 shrink-0 text-[#475569] transition-transform ${open === i ? 'rotate-180' : ''}`}
+              />
+            </button>
+            {open === i && (
+              <p className="border-t border-[#E2E8F0] px-5 py-4 text-sm leading-relaxed text-[#475569]">{f.a}</p>
+            )}
+          </div>
+        ))}
       </div>
-    </section>
+    </Section>
   );
 }
+
+/* ------------------------------------------------------------ final cta */
 
 function FinalCta() {
   return (
-    <section className="relative overflow-hidden bg-ink px-4 py-24 text-center sm:px-6">
-      <div
-        className="absolute inset-0 -z-10"
-        style={{ background: 'radial-gradient(60% 50% at 50% 0%, #27364D 0%, #1E293B 60%)' }}
-      />
-      <div className="absolute inset-x-0 bottom-0 -z-10 h-24 opacity-70">
-        <VolcanoSilhouette variant="dark" />
+    <section className="bg-white pb-28 pt-8">
+      <div className="page-shell">
+        <div className="max-w-2xl">
+          <h2 className="text-balance font-serif text-[32px] font-medium leading-[1.1] text-ink sm:text-[40px]">
+            Empieza por saber dónde estás parada
+          </h2>
+          <p className="mt-4 max-w-lg text-pretty text-[17px] leading-relaxed text-[#475569]">
+            Cuenta tu situación y mira quién puede tomarla. Sin tarjeta.
+          </p>
+
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <Link to="/ingresar">
+              <Button variant="primary" className="w-full sm:w-auto">
+                Crear cuenta
+              </Button>
+            </Link>
+            <Link to="/directorio">
+              <Button variant="secondary" className="w-full sm:w-auto">
+                Ver el directorio
+              </Button>
+            </Link>
+          </div>
+        </div>
+
+        {/* The page opens on one kitchen table and closes on the city those
+            cases are actually tried in. */}
+        {media.cityPhoto && (
+          <Plate
+            className="mt-14"
+            src={media.cityPhoto}
+            alt="Arquería de sillar de Arequipa frente al volcán El Misti"
+            imgClassName="h-[clamp(190px,26vw,330px)] w-full object-cover object-[72%_50%] sm:object-[center_18%]"
+            caption={
+              <>
+                Arequipa, en sillar, bajo El Misti. Los {lawyers.length} abogados del directorio litigan en
+                los juzgados de esta ciudad.
+              </>
+            }
+          />
+        )}
       </div>
-      <Clock3 className="mx-auto h-8 w-8 text-sky" />
-      <h2 className="mt-4 font-serif text-3xl font-medium text-white sm:text-4xl">
-        ¿Lista para dar el primer paso?
-      </h2>
-      <p className="mx-auto mt-3 max-w-xl text-[#CBD5E1]">
-        Empieza hoy, organiza tu expediente y conecta con un abogado verificado del CAA.
-      </p>
-      <Link to="/ingresar" className="mt-7 inline-block">
-        <Button variant="sky">Comenzar mi caso gratis</Button>
-      </Link>
     </section>
   );
 }

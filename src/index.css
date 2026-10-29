@@ -2,6 +2,24 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer components {
+  /* One measure for the whole public site: the bar, the hero plate, every
+     section and the footer share this left and right edge. */
+  .page-shell {
+    @apply mx-auto w-full max-w-[1152px] px-4 sm:px-6;
+  }
+
+  /* The small label that names a section. */
+  .eyebrow {
+    @apply text-xs font-semibold uppercase tracking-[0.14em] text-link;
+  }
+
+  /* The line under a photograph. */
+  .plate-caption {
+    @apply mt-3 max-w-xl text-[13px] leading-relaxed text-[#64748B];
+  }
+}
+
 html {
   -webkit-text-size-adjust: 100%;
 }
@@ -35,4 +53,14 @@ a {
 .scrollbar-thin::-webkit-scrollbar-thumb {
   background: #cbd5e1;
   border-radius: 999px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

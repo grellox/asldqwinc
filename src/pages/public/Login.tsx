@@ -4,6 +4,7 @@ import { Eye, EyeOff, Check } from 'lucide-react';
 import { Logo } from '../../components/ui/Logo';
 import { Button } from '../../components/ui/Button';
 import { useAppStore } from '../../store/useAppStore';
+import { media } from '../../data/media';
 import type { Role } from '../../types';
 
 const demoCredentials: Record<'madre' | 'abogado', { email: string; password: string }> = {
@@ -110,11 +111,20 @@ export function Login() {
   return (
     <div className="flex min-h-screen flex-col">
       <main className="grid flex-1 lg:grid-cols-2">
-        <div className="hidden flex-col bg-ink p-10 lg:flex">
-          <Link to="/">
+        <div className="relative hidden flex-col overflow-hidden bg-ink p-10 lg:flex">
+          {/* The photograph runs at full strength and the type sits in its dark
+              lower half, so the arch stays readable instead of being washed out. */}
+          <img
+            src={media.loginPhoto}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover object-[58%_26%]"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-ink from-20% via-ink/70 via-52% to-transparent" />
+
+          <Link to="/" className="relative">
             <Logo variant="light" />
           </Link>
-          <div className="flex flex-1 flex-col justify-center">
+          <div className="relative mt-auto flex flex-col">
             <p className="font-serif text-3xl font-medium leading-tight text-white">
               Devolvemos el tiempo <span className="text-sky">a la justicia</span>
             </p>
