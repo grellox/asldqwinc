@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Scale, Search, SlidersHorizontal, X } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { Select } from '../ui/Select';
@@ -68,8 +68,19 @@ export function LawyerBrowser({ mode }: LawyerBrowserProps) {
   const priceFloor = useMemo(() => Math.min(...listed.map((l) => l.pricePerHito)), [listed]);
   const priceCeiling = useMemo(() => Math.max(...listed.map((l) => l.pricePerHito)), [listed]);
 
+  // The landing's hero search arrives as ?especialidad=&distrito=.
+  const [searchParams] = useSearchParams();
   const [query, setQuery] = useState('');
-  const [filters, setFilters] = useState<MarketFilters>(() => emptyFilters(priceCeiling));
+  const [filters, setFilters] = useState<MarketFilters>(() => {
+    const specialty = searchParams.get('especialidad');
+    const district = searchParams.get('distrito');
+    return {
+      ...emptyFilters(priceCeiling),
+      specialties:
+        specialty && listed.some((l) => l.specialties.includes(specialty)) ? [specialty] : [],
+      districts: district && listed.some((l) => l.district === district) ? [district] : [],
+    };
+  });
   const [sort, setSort] = useState<SortKey>('recomendados');
   const [page, setPage] = useState(1);
   const [filtersOpen, setFiltersOpen] = useState(false);

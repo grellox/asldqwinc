@@ -1,3 +1,4 @@
+import { asset } from '../lib/assets';
 import type { District, Lawyer, LawyerProfileDraft } from '../types';
 
 export const lawyers: Lawyer[] = [
@@ -162,6 +163,7 @@ export const lawyers: Lawyer[] = [
   },
   {
     id: 'quispe',
+    photo: asset('images/abogados/quispe.webp'),
     name: 'Dra. Rosa Quispe Mamani',
     initials: 'RQ',
     caaNumber: 'CAA N.º 5210',
@@ -542,6 +544,7 @@ export const lawyers: Lawyer[] = [
   },
   {
     id: 'cornejo',
+    photo: asset('images/abogados/cornejo.webp'),
     name: 'Dr. Fernando Cornejo Delgado',
     initials: 'FC',
     caaNumber: 'CAA N.º 2415',

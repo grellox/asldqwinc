@@ -65,6 +65,8 @@ export interface Lawyer {
   bio: string;
   /** Short professional title shown under the name in listings and profile. */
   headline: string;
+  /** Drawn portrait. Without one, the card falls back to the initials tile. */
+  photo?: string;
   /** Longer presentation shown only on the dedicated profile page. */
   about: string;
   yearsExperience: number;

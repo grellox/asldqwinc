@@ -45,10 +45,10 @@ export function LawyerCard({
       <div className="relative">
         {profileHref ? (
           <Link to={profileHref} aria-label={`Ver el perfil de ${lawyer.name}`} className="block">
-            <LawyerMonogram lawyer={lawyer} className={compact ? 'h-28' : 'h-40'} />
+            <LawyerMonogram lawyer={lawyer} className="aspect-[4/3]" />
           </Link>
         ) : (
-          <LawyerMonogram lawyer={lawyer} className={compact ? 'h-28' : 'h-40'} />
+          <LawyerMonogram lawyer={lawyer} className="aspect-[4/3]" />
         )}
 
         {!unavailable && (
