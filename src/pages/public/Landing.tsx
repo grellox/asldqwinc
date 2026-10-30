@@ -210,10 +210,12 @@ function useInView<T extends HTMLElement>(threshold = 0.3) {
 /* ----------------------------------------------------------------- hero */
 
 /**
- * The photograph is the hero: it runs full bleed from the very top of the page,
- * behind the bar, which turns transparent over it. The frame is mirrored so the
- * dark half falls under the headline and the window light, the phone and the
- * children's drawings stay open on the right.
+ * The photograph is the hero, and the hero is the whole screen: it runs full
+ * bleed from the very top of the page down to the fold, behind the bar, which
+ * turns transparent over it. The frame is mirrored so the woman falls under the
+ * headline and the phone, the drawings and the folder of papers stay open on
+ * the right. The type sits on the vertical centre of the frame, so the photograph
+ * breathes above and below it instead of being pushed against one edge.
  */
 function Hero() {
   const navigate = useNavigate();
@@ -229,39 +231,28 @@ function Hero() {
   }
 
   return (
-    <section className="relative -mt-16 flex min-h-[600px] items-center overflow-hidden bg-ink pt-16 lg:min-h-[640px]">
+    <section className="hero-screen relative -mt-16 flex flex-col overflow-hidden bg-ink pt-16">
       <img
         src={media.heroPhoto}
         alt=""
         fetchPriority="high"
         decoding="async"
-        className="absolute inset-0 h-full w-full -scale-x-100 object-cover object-[center_66%]"
+        className="absolute inset-0 h-full w-full -scale-x-100 object-cover object-[center_60%]"
       />
-      {/* Up the page on a phone, across it on a wide screen: either way the type
-          sits on solid colour and the open side of the frame stays visible. */}
-      <div
-        aria-hidden="true"
-        className="absolute inset-0 bg-gradient-to-t from-ink via-ink/85 to-ink/45 sm:hidden"
-      />
-      <div
-        aria-hidden="true"
-        className="absolute inset-0 hidden sm:block"
-        style={{
-          background:
-            'linear-gradient(101deg, rgba(15,23,42,0.96) 0%, rgba(15,23,42,0.90) 34%, rgba(15,23,42,0.62) 60%, rgba(15,23,42,0.28) 100%)',
-        }}
-      />
+      <div aria-hidden="true" className="hero-veil absolute inset-0" />
 
-      <div className="page-shell relative py-20 lg:py-24">
-        <div className="max-w-2xl">
-          <h1 className="text-balance font-serif text-[42px] font-medium leading-[1.04] tracking-[-0.02em] text-white sm:text-[54px]">
+      <div className="page-shell relative flex flex-1 flex-col justify-center py-12 sm:py-16">
+        <div className="w-full">
+          {/* Wide enough to run on one line once the measure allows it, so the
+              sentence is read in one go instead of broken across the column. */}
+          <h1 className="max-w-2xl text-balance font-serif text-[42px] font-medium leading-[1.04] tracking-[-0.02em] text-white sm:text-[54px] xl:max-w-none xl:text-wrap xl:text-[46px]">
             Encuentra a tu abogado de <span className="text-sky">alimentos</span> en Arequipa
           </h1>
           <p className="mt-6 max-w-lg text-pretty text-[17px] leading-relaxed text-[#CBD5E1]">
             Comparar es gratis. Pagas solo cuando aceptas un presupuesto.
           </p>
 
-          <div className="mt-9 overflow-hidden rounded-[14px] bg-white shadow-[0_20px_50px_rgba(2,6,23,0.45)]">
+          <div className="mt-9 max-w-2xl overflow-hidden rounded-[14px] bg-white shadow-[0_20px_50px_rgba(2,6,23,0.45)]">
             <div className="grid sm:grid-cols-2">
               <SearchField icon={Search} label="¿Qué necesitas?" value={specialty} onChange={setSpecialty}>
                 <option value="all">Todas las especialidades</option>
@@ -299,7 +290,7 @@ function Hero() {
             </div>
           </div>
 
-          <div className="mt-5 flex flex-wrap items-center gap-2">
+          <div className="mt-5 flex max-w-2xl flex-wrap items-center gap-2">
             <span className="text-[13px] text-white/65">En palabras simples</span>
             {quickSearches.map((q) => (
               <button
