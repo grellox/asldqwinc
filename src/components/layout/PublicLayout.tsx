@@ -147,7 +147,7 @@ function Footer() {
       <div className="page-shell grid grid-cols-2 gap-8 py-12 md:grid-cols-3">
         <div className="col-span-2 md:col-span-1">
           <Logo />
-          <p className="mt-3 max-w-xs text-sm text-[#475569]">Devolvemos el tiempo a la justicia.</p>
+          <p className="mt-3 max-w-xs text-sm text-[#475569]">Abogados de alimentos verificados en Arequipa.</p>
         </div>
         <div>
           <h2 className="eyebrow">Navegar</h2>

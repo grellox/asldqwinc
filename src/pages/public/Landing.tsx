@@ -241,56 +241,52 @@ function Hero() {
       />
       <div aria-hidden="true" className="hero-veil absolute inset-0" />
 
-      <div className="page-shell relative flex flex-1 flex-col justify-center py-12 sm:py-16">
-        <div className="w-full">
-          {/* Wide enough to run on one line once the measure allows it, so the
-              sentence is read in one go instead of broken across the column. */}
-          <h1 className="max-w-2xl text-balance font-serif text-[42px] font-medium leading-[1.04] tracking-[-0.02em] text-white sm:text-[54px] xl:max-w-none xl:text-wrap xl:text-[46px]">
-            Encuentra a tu abogado de <span className="text-sky">alimentos</span> en Arequipa
+      <div className="relative flex flex-1 flex-col justify-center px-4 py-12 sm:px-6 sm:py-16">
+        <div className="w-full text-center">
+          {/* On a wide screen it steps outside the page measure and sizes itself
+              off the viewport, so the sentence runs on one line at the largest
+              size that still fits. Below that it wraps inside the column. */}
+          <h1 className="mx-auto max-w-2xl text-balance font-serif text-[46px] font-medium leading-[1.04] tracking-[-0.02em] text-white sm:text-[60px] xl:max-w-[1400px] xl:text-wrap xl:text-[clamp(52px,4.6vw,76px)]">
+            Devolvemos el tiempo <span className="text-sky">a la justicia</span>
           </h1>
-          <p className="mt-6 max-w-lg text-pretty text-[17px] leading-relaxed text-[#CBD5E1]">
-            Comparar es gratis. Pagas solo cuando aceptas un presupuesto.
+          <p className="mx-auto mt-6 max-w-3xl text-pretty text-[18px] leading-relaxed text-white/85 sm:text-[20px]">
+            Encuentra a tu abogado y sigue tu proceso etapa por etapa. Comparar es gratis.
           </p>
 
-          <div className="mt-9 max-w-2xl overflow-hidden rounded-[14px] bg-white shadow-[0_20px_50px_rgba(2,6,23,0.45)]">
-            <div className="grid sm:grid-cols-2">
-              <SearchField icon={Search} label="¿Qué necesitas?" value={specialty} onChange={setSpecialty}>
-                <option value="all">Todas las especialidades</option>
-                {specialtyCatalogue.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </SearchField>
+          {/* The search is the one solid object on the page: a pane of the
+              photograph, blurred and darkened, with the fields cut into it. */}
+          <div className="hero-search mx-auto mt-9 flex max-w-3xl flex-col gap-1 rounded-[22px] p-2 lg:flex-row lg:items-center lg:gap-0 lg:rounded-full lg:p-1.5">
+            <SearchField icon={Search} label="¿Qué necesitas?" value={specialty} onChange={setSpecialty}>
+              <option value="all">Todas las especialidades</option>
+              {specialtyCatalogue.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </SearchField>
 
-              <SearchField
-                icon={MapPin}
-                label="¿Dónde vives?"
-                value={district}
-                onChange={setDistrict}
-                className="border-t border-[#E2E8F0] sm:border-l sm:border-t-0"
-              >
-                <option value="all">Todos los distritos</option>
-                {districtCatalogue.map((d) => (
-                  <option key={d} value={d}>
-                    {d}
-                  </option>
-                ))}
-              </SearchField>
-            </div>
+            <span aria-hidden="true" className="mx-4 h-px bg-white/20 lg:mx-1 lg:h-10 lg:w-px" />
 
-            <div className="border-t border-[#E2E8F0] p-2">
-              <Button
-                variant="primary"
-                className="w-full"
-                onClick={() => goToDirectory(specialty, district)}
-              >
-                Buscar abogados
-              </Button>
-            </div>
+            <SearchField icon={MapPin} label="¿Dónde vives?" value={district} onChange={setDistrict}>
+              <option value="all">Todos los distritos</option>
+              {districtCatalogue.map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+            </SearchField>
+
+            <button
+              type="button"
+              onClick={() => goToDirectory(specialty, district)}
+              className="flex min-h-[48px] shrink-0 items-center justify-center gap-2 rounded-[16px] bg-white px-6 text-[15px] font-semibold text-ink transition-colors hover:bg-[#E8EDF5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-transparent lg:rounded-full"
+            >
+              <Search className="h-4 w-4 lg:hidden" />
+              Buscar abogados
+            </button>
           </div>
 
-          <div className="mt-5 flex max-w-2xl flex-wrap items-center gap-2">
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
             <span className="text-[13px] text-white/65">En palabras simples</span>
             {quickSearches.map((q) => (
               <button
@@ -309,7 +305,7 @@ function Hero() {
   );
 }
 
-/** One field of the search block: a label, a native select, and nothing else. */
+/** One field of the search bar: a label, a native select, and nothing else. */
 function SearchField({
   icon: Icon,
   label,
@@ -327,20 +323,22 @@ function SearchField({
 }) {
   return (
     <label
-      className={`flex cursor-pointer items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-[#F8FAFC] focus-within:bg-[#F8FAFC] ${className}`}
+      className={`flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-[16px] px-4 py-2.5 text-left transition-colors hover:bg-white/10 focus-within:bg-white/10 lg:rounded-full lg:px-5 ${className}`}
     >
-      <Icon className="h-5 w-5 shrink-0 text-brand" />
+      <Icon className="h-5 w-5 shrink-0 text-sky" />
       <span className="min-w-0 flex-1">
-        <span className="eyebrow block">{label}</span>
+        <span className="block text-[11px] font-semibold uppercase tracking-[0.14em] text-white/70">
+          {label}
+        </span>
         <span className="relative mt-0.5 flex items-center">
           <select
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            className="w-full cursor-pointer appearance-none truncate bg-transparent pr-6 text-[15px] font-medium text-ink focus:outline-none"
+            className="w-full cursor-pointer appearance-none truncate bg-transparent pr-6 text-[15px] font-medium text-white focus:outline-none"
           >
             {children}
           </select>
-          <ChevronDown className="pointer-events-none absolute right-0 h-4 w-4 text-[#475569]" />
+          <ChevronDown className="pointer-events-none absolute right-0 h-4 w-4 text-white/60" />
         </span>
       </span>
     </label>
