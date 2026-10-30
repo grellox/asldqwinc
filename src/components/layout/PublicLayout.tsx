@@ -32,9 +32,14 @@ export function PublicLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-screen flex-col bg-white">
+      {/* The rule under the bar is an inset shadow, not a border: a border would add
+          a 65th pixel to the bar's box and the hero, pulled up by exactly 4rem,
+          would leave a white hairline at the top of the page. */}
       <header
-        className={`sticky top-0 z-40 border-b transition-colors duration-200 ${
-          overHero ? 'border-transparent bg-transparent' : 'border-[#E2E8F0] bg-white/95 backdrop-blur'
+        className={`sticky top-0 z-40 transition-[background-color,box-shadow] duration-200 ${
+          overHero
+            ? 'bg-transparent'
+            : 'bg-white/95 shadow-[inset_0_-1px_0_#E2E8F0] backdrop-blur'
         }`}
       >
         <div className="page-shell flex h-16 items-center justify-between">
