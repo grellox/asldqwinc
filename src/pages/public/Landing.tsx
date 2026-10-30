@@ -123,6 +123,7 @@ function Section({
   eyebrow,
   title,
   tone = 'white',
+  bridge = false,
   children,
 }: {
   id?: string;
@@ -130,11 +131,19 @@ function Section({
   eyebrow?: string;
   title: ReactNode;
   tone?: 'white' | 'canvas';
+  /** Set on the section that follows the hero: it opens out of the photograph's ink. */
+  bridge?: boolean;
   children: ReactNode;
 }) {
   return (
-    <section id={id} className={`py-24 ${tone === 'canvas' ? 'bg-canvas' : 'bg-white'}`}>
-      <div className="page-shell">
+    <section
+      id={id}
+      className={`relative py-24 ${tone === 'canvas' ? 'bg-canvas' : 'bg-white'}`}
+    >
+      {bridge && (
+        <div aria-hidden="true" className="hero-bridge absolute inset-x-0 top-0" />
+      )}
+      <div className="page-shell relative">
         {eyebrow && <p className="eyebrow">{eyebrow}</p>}
         <h2
           className={`max-w-3xl text-balance font-serif text-[34px] font-medium leading-[1.1] text-ink sm:text-[42px] ${
@@ -240,6 +249,7 @@ function Hero() {
         className="absolute inset-0 h-full w-full -scale-x-100 object-cover object-[center_60%]"
       />
       <div aria-hidden="true" className="hero-veil absolute inset-0" />
+      <div aria-hidden="true" className="hero-floor absolute inset-x-0 bottom-0" />
 
       <div className="relative flex flex-1 flex-col justify-center px-4 py-12 sm:px-6 sm:py-16">
         <div className="w-full text-center">
@@ -354,6 +364,7 @@ function Ruta() {
     <Section
       id="como-funciona"
       tone="canvas"
+      bridge
       eyebrow="La ruta de tu caso"
       title={`Unos ${averageMonths} meses, cinco etapas`}
     >
